@@ -1,15 +1,25 @@
+var MongoMemoryServer = require('mongodb-memory-server').MongoMemoryServer;
 var async = require('async'),
 should = require('chai').should(),
 mongoose = require('mongoose'),
 autoIncrement = require('..'),
 connection;
+var mongodb;
 
 before(function (done) {
-  connection = mongoose.createConnection('mongodb://127.0.0.1/mongoose-auto-increment-test');
-  connection.on('error', console.error.bind(console));
-  connection.once('open', function () {
-    autoIncrement.initialize(connection);
-    done();
+  this.timeout(30000);
+  MongoMemoryServer.create().then((mongod) => {
+    console.log("mongod created");
+    mongod.getUri().then(uri=>{
+      mongodb = mongod;
+      connection = mongoose.createConnection(uri);
+      connection.on('error', console.error.bind(console));
+      connection.once('open', function () {
+        autoIncrement.initialize(connection);
+        done();
+      });
+    });
+    
   });
 });
 
@@ -17,6 +27,13 @@ after(function (done) {
   connection.db.dropDatabase(function (err) {
     if (err) return done(err);
     connection.close(done);
+    mongodb.stop((err)=>{
+      if(err){
+        console.log("Error in shutting down mongodb");
+      }else{
+        console.log('Shut down mongodb');
+      }
+    })
   });
 });
 
@@ -54,8 +71,8 @@ describe('mongoose-auto-increment', function () {
     // Assert
     function assert(err, results) {
       should.not.exist(err);
-      results.user1[0].should.have.property('_id', 0);
-      results.user2[0].should.have.property('_id', 1);
+      results.user1.should.have.property('_id', 0);
+      results.user2.should.have.property('_id', 1);
       done();
     }
 
@@ -86,8 +103,8 @@ describe('mongoose-auto-increment', function () {
     // Assert
     function assert(err, results) {
       should.not.exist(err);
-      results.user1[0].should.have.property('userId', 0);
-      results.user2[0].should.have.property('userId', 1);
+      results.user1.should.have.property('userId', 0);
+      results.user2.should.have.property('userId', 1);
       done();
     }
 
@@ -119,8 +136,8 @@ describe('mongoose-auto-increment', function () {
     // Assert
     function assert(err, results) {
       should.not.exist(err);
-      results.user1[0].should.have.property('_id', 3);
-      results.user2[0].should.have.property('_id', 4);
+      results.user1.should.have.property('_id', 3);
+      results.user2.should.have.property('_id', 4);
       done();
     }
 
@@ -159,8 +176,8 @@ describe('mongoose-auto-increment', function () {
     // Assert
     function assert(err, results) {
       should.not.exist(err);
-      results.user1[0].should.have.property('_id', 0);
-      results.user2[0].should.have.property('_id', 5);
+      results.user1.should.have.property('_id', 0);
+      results.user2.should.have.property('_id', 5);
       done();
     }
 
@@ -206,9 +223,9 @@ describe('mongoose-auto-increment', function () {
       function assert(err, results) {
         should.not.exist(err);
         results.count1.should.equal(0);
-        results.user1[0].should.have.property('_id', 0);
+        results.user1.should.have.property('_id', 0);
         results.count2.should.equal(1);
-        results.user2[0].should.have.property('_id', 1);
+        results.user2.should.have.property('_id', 1);
         results.count3.should.equal(2);
         done();
       }
@@ -245,7 +262,7 @@ describe('mongoose-auto-increment', function () {
       // Assert
       function assert(err, results) {
         should.not.exist(err);
-        results.user[0].should.have.property('_id', 0);
+        results.user.should.have.property('_id', 0);
         results.count1.should.equal(1);
         results.reset.should.equal(0);
         results.count2.should.equal(0);
